@@ -1,0 +1,20 @@
+# Artefactos de compilación (PyInstaller)
+build/
+dist/
+*.spec
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Temporales del proyecto
+_*.py
+_*.mjs
+_*.js
+_*.log
+_*.json
+
+# Sistema
+Thumbs.db
+.DS_Store

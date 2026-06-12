@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JoDi · Detector de Texto Artificial</title>
+<meta name="description" content="JoDi — Detecta si un texto fue escrito por una persona o generado por inteligencia artificial. 17 métricas, más de 200 señales lingüísticas. 100% en tu navegador.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06060a; --bg2:#0b0912;
+  --violet:#a855f7; --magenta:#e635ff; --neon:#c46bff;
+  --grad:linear-gradient(135deg,#a855f7 0%,#e635ff 100%);
+  --red:#ff4d6d; --amber:#ffc24d; --green:#3ee9b0;
+  --tx:#f3eefb; --tx2:#aa9fc6; --tx3:#6b6288;
+  --glass:rgba(255,255,255,.035);
+  --glass-brd:rgba(255,255,255,.09);
+  --display:'Orbitron','Space Grotesk','Segoe UI',system-ui,sans-serif;
+  --font:'Space Grotesk','Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);background:var(--bg);color:var(--tx);overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;position:relative;min-height:100vh}
+::selection{background:rgba(230,53,255,.35);color:#fff}
+
+.bg{position:fixed;inset:0;z-index:-3;overflow:hidden;background:
+  radial-gradient(1200px 700px at 70% -5%, #1a0b2e 0%, transparent 55%),
+  radial-gradient(900px 600px at 15% 20%, #14071f 0%, transparent 60%),
+  linear-gradient(180deg,#06060a 0%,#08060e 50%,#06050a 100%)}
+.orb{position:absolute;border-radius:50%;filter:blur(90px);opacity:.55;
+  mix-blend-mode:screen;animation:float 18s ease-in-out infinite}
+.orb.a{width:520px;height:520px;left:48%;top:-160px;
+  background:radial-gradient(circle,#c026d3 0%,#7c1fa8 40%,transparent 70%)}
+.orb.b{width:420px;height:420px;left:62%;top:120px;
+  background:radial-gradient(circle,#a855f7 0%,#5b21b6 45%,transparent 72%);
+  animation-delay:-6s;animation-duration:22s}
+.orb.c{width:360px;height:360px;left:8%;top:340px;
+  background:radial-gradient(circle,#7c3aed 0%,transparent 70%);opacity:.4;
+  animation-delay:-11s;animation-duration:26s}
+@keyframes float{0%,100%{transform:translate(0,0) scale(1)}
+  33%{transform:translate(-30px,40px) scale(1.07)}
+  66%{transform:translate(25px,-25px) scale(.96)}}
+.grid-lines{position:fixed;inset:0;z-index:-2;pointer-events:none;opacity:.5;
+  background-image:linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+  background-size:25% 100%}
+.vignette{position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(120% 90% at 50% 0%,transparent 55%,rgba(0,0,0,.55) 100%)}
+.grain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.04;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+.wrap{max-width:980px;margin:0 auto;padding:0 28px 80px}
+nav{display:flex;align-items:center;justify-content:space-between;
+  padding:20px 0 18px;position:sticky;top:0;z-index:50;
+  background:linear-gradient(180deg,rgba(6,6,10,.92) 0%,rgba(6,6,10,.78) 60%,rgba(6,6,10,0) 100%);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{width:40px;height:40px;display:grid;place-items:center;border-radius:12px;
+  background:var(--glass);border:1px solid var(--glass-brd);
+  font-family:var(--display);font-weight:900;color:#fff;font-size:18px;
+  box-shadow:0 0 24px rgba(168,85,247,.35),inset 0 0 14px rgba(230,53,255,.15)}
+.brand-name{font-family:var(--display);font-weight:700;font-size:21px;letter-spacing:2px}
+.brand-name b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand-sub{font-size:10.5px;color:var(--tx3);letter-spacing:.5px;margin-top:1px}
+.badges{display:flex;gap:7px}
+.badge{display:flex;align-items:center;gap:6px;padding:6px 11px;border-radius:20px;
+  background:var(--glass);border:1px solid var(--glass-brd);font-size:11px;color:var(--tx2)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--tx3)}
+.badge.on .dot{background:var(--green);box-shadow:0 0 8px var(--green)}
+
+.hero{text-align:center;padding:48px 0 30px}
+.kicker{font-size:12px;letter-spacing:5px;color:var(--neon);text-transform:uppercase;
+  margin-bottom:18px;opacity:.85;animation:fadeUp .7s both}
+.title{font-family:var(--display);font-weight:900;font-size:clamp(54px,11vw,108px);
+  line-height:.92;letter-spacing:4px;margin-bottom:18px;animation:fadeUp .8s both .05s}
+.title .jo{color:#fff;text-shadow:0 0 40px rgba(255,255,255,.25)}
+.title .di{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 34px rgba(230,53,255,.55))}
+.tagline{max-width:520px;margin:0 auto;color:var(--tx2);font-size:16px;font-weight:300;
+  line-height:1.6;animation:fadeUp .8s both .12s}
+.tagline b{color:var(--tx);font-weight:500}
+
+.panel{margin-top:38px;background:var(--glass);border:1px solid var(--glass-brd);
+  border-radius:22px;padding:26px;backdrop-filter:blur(22px);
+  box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.05);
+  animation:fadeUp .8s both .2s}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.panel-head h2{font-size:17px;font-weight:600}.panel-head span{font-size:12px;color:var(--tx3)}
+.upload{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+  padding:14px;border-radius:14px;cursor:pointer;font-size:14px;font-weight:500;
+  color:var(--neon);background:rgba(168,85,247,.08);border:1px dashed rgba(196,107,255,.4);transition:.22s}
+.upload:hover{background:rgba(168,85,247,.16);border-color:var(--magenta);
+  box-shadow:0 0 26px rgba(230,53,255,.2);color:#fff}
+.filechip{margin-top:10px;font-size:12.5px;color:var(--neon);min-height:18px}
+.sep{display:flex;align-items:center;gap:14px;margin:18px 0;color:var(--tx3);font-size:12px}
+.sep::before,.sep::after{content:"";height:1px;flex:1;background:var(--glass-brd)}
+.ta-wrap{position:relative;border-radius:14px;border:1px solid var(--glass-brd);
+  background:rgba(0,0,0,.25);transition:.22s}
+.ta-wrap:focus-within{border-color:var(--magenta);
+  box-shadow:0 0 0 3px rgba(230,53,255,.12),0 0 30px rgba(230,53,255,.12)}
+textarea{width:100%;min-height:170px;resize:vertical;border:0;outline:0;background:transparent;
+  color:var(--tx);font-family:var(--font);font-size:14.5px;line-height:1.65;padding:16px}
+textarea::placeholder{color:var(--tx3)}
+.ta-foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-size:12px;color:var(--tx3)}
+#charcount.ok{color:var(--neon)}
+.btn{width:100%;margin-top:18px;padding:16px;border:0;border-radius:14px;cursor:pointer;
+  font-family:var(--font);font-size:15px;font-weight:600;letter-spacing:.3px;color:#fff;
+  background:var(--grad);transition:.22s;position:relative;overflow:hidden;
+  box-shadow:0 12px 38px rgba(168,85,247,.4),0 0 0 1px rgba(255,255,255,.06) inset}
+.btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 18px 50px rgba(230,53,255,.55)}
+.btn:active:not(:disabled){transform:translateY(0)}
+.btn:disabled{cursor:not-allowed;background:rgba(255,255,255,.05);color:var(--tx3);box-shadow:none}
+.btn.ghost{background:var(--glass);border:1px solid var(--glass-brd);color:var(--tx2);box-shadow:none}
+.btn.ghost:hover{background:rgba(255,255,255,.07);color:var(--tx);transform:translateY(-2px)}
+
+#view-loading{display:none;padding:60px 0;text-align:center;animation:fade .4s both}
+.spinner{width:74px;height:74px;margin:0 auto 26px;position:relative}
+.spinner svg{width:100%;height:100%;animation:spin 1.1s linear infinite}
+.spinner .ring{fill:none;stroke:rgba(255,255,255,.06);stroke-width:5}
+.spinner .arc{fill:none;stroke:url(#sg);stroke-width:5;stroke-linecap:round;
+  stroke-dasharray:120;stroke-dashoffset:60;filter:drop-shadow(0 0 6px var(--magenta))}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-pct{font-family:var(--display);font-size:42px;font-weight:700;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.load-msg{color:var(--tx2);font-size:14px;margin-top:8px;min-height:20px}
+.load-bar{max-width:420px;height:5px;margin:22px auto 0;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden}
+.load-bar i{display:block;height:100%;width:0;border-radius:4px;background:var(--grad);box-shadow:0 0 16px var(--magenta);transition:width .3s ease}
+
+#view-result{display:none}
+.card{background:var(--glass);border:1px solid var(--glass-brd);border-radius:20px;padding:24px;
+  backdrop-filter:blur(22px);margin-top:18px;
+  box-shadow:0 24px 60px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.04);animation:fadeUp .6s both}
+.card.d1{animation-delay:.05s}.card.d2{animation-delay:.12s}
+.card.d3{animation-delay:.19s}.card.d4{animation-delay:.26s}.card.d5{animation-delay:.33s}
+.sect{display:flex;align-items:center;gap:9px;margin-bottom:18px}
+.sect .bar{width:3px;height:15px;border-radius:2px;background:var(--grad)}
+.sect h3{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--tx2);font-weight:600}
+.sect .hint{margin-left:auto;font-size:11px;color:var(--tx3)}
+.result-hero{display:flex;align-items:center;gap:30px;flex-wrap:wrap}
+.gauge{position:relative;width:210px;height:210px;flex-shrink:0;margin:0 auto}
+.gauge svg{width:100%;height:100%;transform:rotate(-90deg)}
+.gauge .track{fill:none;stroke:rgba(255,255,255,.06);stroke-width:14}
+.gauge .prog{fill:none;stroke-width:14;stroke-linecap:round;
+  transition:stroke-dashoffset 1.4s cubic-bezier(.2,.8,.2,1);filter:drop-shadow(0 0 10px currentColor)}
+.gauge .center{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.gauge .num{font-family:var(--display);font-size:52px;font-weight:700;line-height:1}
+.gauge .num small{font-size:22px}
+.gauge .lbl{font-size:10.5px;letter-spacing:1.5px;color:var(--tx3);text-transform:uppercase;margin-top:4px}
+.rhero-right{flex:1;min-width:240px}
+.verdict{display:inline-block;padding:10px 18px;border-radius:12px;font-weight:600;font-size:15px;margin-bottom:18px;border:1px solid transparent}
+.conf-lbl{font-size:11px;letter-spacing:1px;color:var(--tx3);text-transform:uppercase;margin-bottom:8px}
+.minibar{height:7px;border-radius:5px;background:rgba(255,255,255,.07);overflow:hidden}
+.minibar i{display:block;height:100%;width:0;border-radius:5px;transition:width 1.1s ease}
+.conf-val{font-size:13px;color:var(--tx2);margin-top:8px}
+.grid{display:grid;gap:10px}
+.zones{grid-template-columns:repeat(3,1fr)}
+.metrics{grid-template-columns:repeat(4,1fr)}
+.cats{grid-template-columns:repeat(5,1fr)}
+.tile{background:rgba(255,255,255,.03);border:1px solid var(--glass-brd);border-radius:14px;padding:14px}
+.tile .t-lbl{font-size:10px;letter-spacing:.6px;color:var(--tx3);text-transform:uppercase}
+.tile .t-val{font-family:var(--display);font-weight:700;font-size:22px;margin-top:5px}
+.tile .t-sub{font-size:10.5px;color:var(--tx3);margin-top:3px}
+.tile.cat{text-align:center}.tile.cat .t-val{font-size:28px}
+.zone-bar{height:4px;border-radius:3px;background:rgba(255,255,255,.07);margin:8px 0 6px;overflow:hidden}
+.zone-bar i{display:block;height:100%;width:0;border-radius:3px;transition:width 1s ease}
+.sig-row{display:flex;align-items:center;gap:12px;padding:6px 0}
+.sig-name{width:230px;font-size:13px;color:var(--tx2);flex-shrink:0}
+.sig-name.human{color:var(--green)}
+.sig-track{flex:1;height:7px;border-radius:5px;background:rgba(255,255,255,.06);overflow:hidden}
+.sig-track i{display:block;height:100%;width:0;border-radius:5px;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.sig-val{width:46px;text-align:right;font-size:12.5px;color:var(--tx2);font-variant-numeric:tabular-nums}
+.sig-sep{display:flex;align-items:center;gap:12px;margin:14px 0 6px;color:var(--tx3);font-size:10.5px;letter-spacing:1px;text-transform:uppercase}
+.sig-sep::before,.sig-sep::after{content:"";height:1px;flex:1;background:var(--glass-brd)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+.foot-note{text-align:center;color:var(--tx3);font-size:11.5px;margin-top:28px;line-height:1.6}
+.foot-note a{color:var(--neon);text-decoration:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media(max-width:760px){
+  .metrics{grid-template-columns:repeat(2,1fr)}
+  .cats{grid-template-columns:repeat(3,1fr)}
+  .sig-name{width:150px}
+  .badges .badge span:last-child{display:none}
+}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120%);
+  background:rgba(20,16,30,.97);border:1px solid var(--glass-brd);color:var(--tx);
+  padding:14px 20px;border-radius:12px;font-size:13.5px;z-index:200;max-width:480px;
+  box-shadow:0 18px 50px rgba(0,0,0,.5);transition:transform .4s cubic-bezier(.2,.9,.2,1)}
+.toast.show{transform:translateX(-50%) translateY(0)}.toast b{color:var(--neon)}
+</style>
+</head>
+<body>
+<div class="bg"><div class="orb a"></div><div class="orb b"></div><div class="orb c"></div></div>
+<div class="grid-lines"></div><div class="vignette"></div><div class="grain"></div>
+
+<div class="wrap">
+  <nav>
+    <div class="brand">
+      <div class="mark">J</div>
+      <div>
+        <div class="brand-name">Jo<b>Di</b></div>
+        <div class="brand-sub">DETECTOR DE CONTENIDO IA · WEB</div>
+      </div>
+    </div>
+    <div class="badges">
+      <div class="badge on"><span class="dot"></span><span>Análisis local</span></div>
+      <div class="badge on"><span class="dot"></span><span>100% privado</span></div>
+      <div class="badge on"><span class="dot"></span><span>PDF</span></div>
+      <div class="badge on"><span class="dot"></span><span>DOCX</span></div>
+    </div>
+  </nav>
+
+  <section id="view-input">
+    <div class="hero">
+      <div class="kicker">análisis lingüístico forense</div>
+      <h1 class="title"><span class="jo">Jo</span><span class="di">Di</span></h1>
+      <p class="tagline">Descubre si un texto fue escrito por una persona o generado por
+        <b>inteligencia artificial</b>. 17 métricas, más de 200 señales lingüísticas,
+        ejecutadas <b>100% en tu navegador</b>.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Analizar texto</h2><span>PDF · DOCX · TXT · texto pegado</span></div>
+      <div class="upload" id="upload">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 16V4M6 10l6-6 6 6"/><path d="M4 20h16"/></svg>
+        Cargar archivo
+      </div>
+      <input type="file" id="fileinput" accept=".txt,.pdf,.docx,.doc" hidden>
+      <div class="filechip" id="filechip"></div>
+      <div class="sep">o pega el texto</div>
+      <div class="ta-wrap"><textarea id="ta" placeholder="Pega aquí el texto que quieres analizar…"></textarea></div>
+      <div class="ta-foot"><span id="charcount">0 caracteres</span><span>mínimo 80 caracteres</span></div>
+      <button class="btn" id="analyze" disabled>Analizar texto</button>
+    </div>
+  </section>
+
+  <section id="view-loading">
+    <div class="spinner">
+      <svg viewBox="0 0 50 50"><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#a855f7"/><stop offset="1" stop-color="#e635ff"/></linearGradient></defs>
+        <circle class="ring" cx="25" cy="25" r="20"/><circle class="arc" cx="25" cy="25" r="20"/></svg>
+    </div>
+    <div class="load-pct" id="loadpct">0%</div>
+    <div class="load-msg" id="loadmsg">Inicializando…</div>
+    <div class="load-bar"><i id="loadbar"></i></div>
+  </section>
+
+  <section id="view-result">
+    <div class="card d1">
+      <div class="sect"><span class="bar"></span><h3>Resultado del análisis</h3><span class="hint" id="res-ts"></span></div>
+      <div class="result-hero">
+        <div class="gauge">
+          <svg viewBox="0 0 210 210"><circle class="track" cx="105" cy="105" r="92"/>
+            <circle class="prog" id="gprog" cx="105" cy="105" r="92"/></svg>
+          <div class="center"><div class="num" id="gnum">0<small>%</small></div>
+            <div class="lbl">Probabilidad IA</div></div>
+        </div>
+        <div class="rhero-right">
+          <div class="verdict" id="verdict">—</div>
+          <div class="conf-lbl">Confianza del análisis</div>
+          <div class="minibar"><i id="confbar"></i></div>
+          <div class="conf-val" id="confval"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card d2"><div class="sect"><span class="bar"></span><h3>Análisis por zonas del texto</h3></div>
+      <div class="grid zones" id="zones"></div></div>
+    <div class="card d3"><div class="sect"><span class="bar"></span><h3>Métricas del documento</h3></div>
+      <div class="grid metrics" id="metrics"></div></div>
+    <div class="card d4"><div class="sect"><span class="bar"></span><h3>Frases detectadas por categoría</h3></div>
+      <div class="grid cats" id="cats"></div></div>
+    <div class="card d5"><div class="sect"><span class="bar"></span><h3>Señales detectadas</h3>
+      <span class="hint">↑ más alto = más probable IA</span></div>
+      <div id="signals"></div></div>
+    <div class="actions">
+      <button class="btn" id="export">⬓&nbsp;&nbsp;Exportar informe (PDF)</button>
+      <button class="btn ghost" id="reset">↺&nbsp;&nbsp;Analizar otro texto</button>
+    </div>
+  </section>
+
+  <div class="foot-note">
+    JoDi es una estimación estadística, no una prueba concluyente de autoría · Tu texto nunca sale de tu navegador
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Motor de análisis (port JS del motor Python) -->
+<script src="engine.js"></script>
+<!-- Lectores de PDF y DOCX (opcionales, vía CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let fileText = "", lastResult = null;
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const STEPS = [
+  "Tokenizando el corpus de entrada","Construyendo el índice de frases",
+  "Analizando patrones léxicos","Calculando entropía y burstiness",
+  "Evaluando la estructura sintáctica","Detectando frases GPT por categoría",
+  "Analizando las zonas del texto","Midiendo la redundancia semántica",
+  "Detectando rasgos humanos","Calibrando el score final",
+];
+
+function verdictFor(s){
+  if(s>=70) return ["PROBABLE ORIGEN ARTIFICIAL","#ff4d6d","rgba(255,77,109,.12)"];
+  if(s>=45) return ["RESULTADO MIXTO / INCIERTO","#ffc24d","rgba(255,194,77,.12)"];
+  return ["PROBABLE ORIGEN HUMANO","#3ee9b0","rgba(62,233,176,.12)"];
+}
+const sigColor = v => v>65 ? "#ff4d6d" : v>35 ? "#ffc24d" : "#3ee9b0";
+
+function show(view){
+  ["input","loading","result"].forEach(v=>$("#view-"+v).style.display="none");
+  $("#view-"+view).style.display="block";
+  window.scrollTo({top:0,behavior:"instant"});
+}
+function currentText(){ const ta=$("#ta").value.trim(); return fileText && !ta ? fileText : ta; }
+function refreshCta(){
+  const n=currentText().length, cc=$("#charcount");
+  cc.textContent=n.toLocaleString("es")+" caracteres";
+  cc.classList.toggle("ok", n>=80);
+  $("#analyze").disabled=n<80;
+}
+$("#ta").addEventListener("input", ()=>{ if($("#ta").value.trim()) fileText=""; refreshCta(); });
+
+/* ── Carga de archivo ── */
+$("#upload").addEventListener("click", ()=>$("#fileinput").click());
+$("#fileinput").addEventListener("change", async (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const ext = (file.name.split(".").pop()||"").toLowerCase();
+  try{
+    let text="";
+    if(ext==="txt"){ text = await file.text(); }
+    else if(ext==="pdf"){
+      if(!window.pdfjsLib) throw new Error("El lector de PDF no cargó (revisa tu conexión).");
+      text = await readPdf(file);
+    } else if(ext==="docx" || ext==="doc"){
+      if(!window.mammoth) throw new Error("El lector de DOCX no cargó (revisa tu conexión).");
+      const res = await mammoth.extractRawText({arrayBuffer: await file.arrayBuffer()});
+      text = res.value;
+    } else { throw new Error("Formato no soportado: ."+ext); }
+    fileText = text || "";
+    $("#ta").value = fileText.slice(0,1200) + (fileText.length>1200?"…":"");
+    $("#filechip").textContent = "✓ "+file.name+" · "+fileText.length.toLocaleString("es")+" caracteres";
+    refreshCta();
+  }catch(err){ toast("⚠ "+(err.message||err)); }
+  e.target.value="";
+});
+async function readPdf(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  let text="";
+  for(let i=1;i<=pdf.numPages;i++){
+    const page = await pdf.getPage(i);
+    const tc = await page.getTextContent();
+    text += tc.items.map(it=>it.str).join(" ")+"\n";
+  }
+  return text;
+}
+
+/* ── Análisis ── */
+$("#analyze").addEventListener("click", runAnalysis);
+async function runAnalysis(){
+  const text = currentText();
+  if(text.length<80){ toast("Se necesitan al menos 80 caracteres."); return; }
+  show("loading");
+  const t0=performance.now(), minTime=2400; let stop=false;
+  (async()=>{
+    for(let i=0;i<STEPS.length && !stop;i++){
+      const pct=Math.round((i+1)/STEPS.length*92);
+      $("#loadpct").textContent=pct+"%"; $("#loadmsg").textContent=STEPS[i]+"…";
+      $("#loadbar").style.width=pct+"%";
+      await sleep(minTime/STEPS.length);
+    }
+  })();
+  let result;
+  try{ result = window.JoDiEngine.analyzeText(text); }
+  catch(e){ toast("⚠ Error: "+e.message); show("input"); return; }
+  const el=performance.now()-t0;
+  if(el<minTime) await sleep(minTime-el);
+  stop=true;
+  $("#loadpct").textContent="100%"; $("#loadbar").style.width="100%";
+  await sleep(220);
+  render(result);
+}
+
+function render(r){
+  lastResult=r; show("result");
+  const score=r.ai_score, [vtxt,vcol,vbg]=verdictFor(score);
+  $("#res-ts").textContent = new Date().toLocaleTimeString("es")+" · "+r.word_count.toLocaleString("es")+" palabras";
+  const R=92, C=2*Math.PI*R, g=$("#gprog");
+  g.style.stroke=vcol; g.style.color=vcol; g.style.strokeDasharray=C; g.style.strokeDashoffset=C;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ g.style.strokeDashoffset=C*(1-score/100); }));
+  countUp($("#gnum"), score, "<small>%</small>");
+  $("#gnum").style.color=vcol;
+  const vd=$("#verdict"); vd.textContent=vtxt; vd.style.color=vcol; vd.style.background=vbg; vd.style.borderColor=vcol+"55";
+  $("#confval").textContent=r.confidence+"% · "+r.sentence_count+" oraciones analizadas";
+  const cb=$("#confbar"); cb.style.background="var(--grad)"; setTimeout(()=>cb.style.width=r.confidence+"%",200);
+
+  const Z=[["INTRODUCCIÓN",r.zones.intro,"apertura"],["CUERPO",r.zones.body,"desarrollo"],["CIERRE",r.zones.closing,"conclusión"]];
+  $("#zones").innerHTML = Z.map(([n,v,s])=>{ const p=Math.round(v*100),c=sigColor(p);
+    return `<div class="tile"><div class="t-lbl">${n}</div><div class="t-val" style="color:${c}">${p}%</div>
+      <div class="zone-bar"><i data-w="${p}" style="background:${c}"></i></div><div class="t-sub">${s}</div></div>`;}).join("");
+
+  const M=[["PALABRAS",r.word_count,""],["ORACIONES",r.sentence_count,""],
+    ["PROM/ORACIÓN",r.avg_words_per_sentence,"palabras"],["DIVERSIDAD",r.lexical_diversity+"%","TTR léxico"],
+    ["ENTROPÍA",r.lexical_entropy+"%","normalizada"],["FRASES IA",r.ai_phrases_total,"detectadas"],
+    ["VOCAB GPT",r.gpt_vocab_found,"palabras"],["HUMANIDAD",r.human_signal+"%","señal humana"]];
+  $("#metrics").innerHTML = M.map(([l,v,s])=>`<div class="tile"><div class="t-lbl">${l}</div>
+    <div class="t-val">${v}</div>${s?`<div class="t-sub">${s}</div>`:""}</div>`).join("");
+
+  const labels={apertura:"APERTURA",cierre:"CIERRE","transición":"TRANSICIÓN","énfasis":"ÉNFASIS","clichés":"CLICHÉS"};
+  $("#cats").innerHTML = Object.keys(labels).map(k=>{ const h=r.phrase_categories[k]||0;
+    const c=h>=3?"#ff4d6d":h>=1?"#ffc24d":"var(--tx3)";
+    return `<div class="tile cat"><div class="t-lbl">${labels[k]}</div>
+      <div class="t-val" style="color:${c}">${h}</div><div class="t-sub">coincidencias</div></div>`;}).join("");
+
+  const ia=r.signals.filter(s=>!s[0].includes("↓")), hu=r.signals.filter(s=>s[0].includes("↓"));
+  let html=ia.map(([n,v])=>sigRow(n,v,false)).join("");
+  if(hu.length){ html+=`<div class="sig-sep">Penalizaciones — reducen el score</div>`;
+    html+=hu.map(([n,v])=>sigRow(n.replace(" ↓",""),v,true)).join(""); }
+  $("#signals").innerHTML=html;
+  setTimeout(()=>document.querySelectorAll('[data-w]').forEach(i=>i.style.width=i.dataset.w+"%"),120);
+}
+function sigRow(name,v,human){ const c=human?"#3ee9b0":sigColor(v);
+  return `<div class="sig-row"><div class="sig-name ${human?'human':''}">${name}</div>
+    <div class="sig-track"><i data-w="${v}" style="background:${c};box-shadow:0 0 10px ${c}66"></i></div>
+    <div class="sig-val" style="color:${(v>50||human)?c:'var(--tx2)'}">${v}%</div></div>`; }
+function countUp(el,target,suffix){ const dur=1300,t0=performance.now();
+  function step(t){ const p=Math.min((t-t0)/dur,1),e=1-Math.pow(1-p,3);
+    el.innerHTML=Math.round(target*e)+suffix; if(p<1) requestAnimationFrame(step); }
+  requestAnimationFrame(step); }
+
+/* ── Exportar / reset ── */
+$("#export").addEventListener("click", ()=>{
+  if(!lastResult) return;
+  try{
+    const html = window.JoDiEngine.buildHtmlReport(lastResult);
+    const blob = new Blob([html], {type:"text/html"});
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, "_blank");
+    if(!w) toast("⚠ Permite las ventanas emergentes para ver el informe.");
+    else toast("Informe abierto en una pestaña nueva → <b>Ctrl+P → Guardar como PDF</b>.");
+    setTimeout(()=>URL.revokeObjectURL(url), 60000);
+  }catch(e){ toast("⚠ "+e.message); }
+});
+$("#reset").addEventListener("click", ()=>{
+  fileText=""; lastResult=null; $("#ta").value=""; $("#filechip").textContent="";
+  refreshCta(); show("input");
+});
+
+let toastT;
+function toast(msg){ const t=$("#toast"); t.innerHTML=msg; t.classList.add("show");
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),5200); }
+
+refreshCta();
+</script>
+</body>
+</html>
